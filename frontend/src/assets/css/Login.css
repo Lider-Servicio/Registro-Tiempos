@@ -1,0 +1,166 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+.bg-logo {
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    transform: translate(-50%, -50%);
+    width: 400px;
+    opacity: 0.15; /* Ajusta la transparencia aquí */
+    pointer-events: none;
+    z-index: 1;
+}
+
+.login-container {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #f8f9fa;
+    /* Imagen de fondo */
+    background-image: url('../img/logoFlag.png');
+    background-repeat:repeat;
+    background-position: center;
+    background-size: 400px auto; /* Ajusta este tamaño según tu gusto */
+    position: relative;
+}
+
+/* Capa de suavizado para que el logo no dificulte la lectura del formulario */
+.login-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.85); /* 0.85 permite ver el fondo */
+    z-index: 1;
+}
+
+/* Tarjeta del formulario por encima de la capa del fondo */
+.login-card {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    max-width: 380px;
+    padding: 28px;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    font-family: sans-serif;
+    background-color: #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.login-container p {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.login-container label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+}
+
+.login-container input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.form-group {
+    margin-bottom: 12px;
+}
+
+#error {
+    color: #d93025;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+#message {
+    color: #188038;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+#submit-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #0066cc;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+#submit-btn:hover {
+    background-color: #0052a3;
+}
+
+/* Contenedor del botón inferior */
+.toggle-container {
+    margin-top: 18px;
+    text-align: center;
+    border-top: 1px solid #f0f0f0;
+    padding-top: 14px;
+}
+
+/* Botón estilo enlace para alternar modo */
+.btn-link {
+    background: none;
+    border: none;
+    color: #0066cc;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: underline;
+    transition: color 0.2s ease;
+}
+
+.btn-link:hover {
+    color: #004080;
+}
+
+/* Estilos adicionales para alertas de error y exito */
+.alert {
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 12px;
+}
+
+.alert-error {
+    background-color: #fce8e6;
+    color: #d93025;
+    border: 1px solid #fad2cf;
+}
+
+.alert-success {
+    background-color: #e6f4ea;
+    color: #137333;
+    border: 1px solid #ceedd6;
+}
+
+/* Enlace pequeño para Olvidé mi contraseña */
+.btn-link-sm {
+    background: none;
+    border: none;
+    color: #0066cc;
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 0;
+    margin-bottom: 4px;
+    text-decoration: underline;
+}
+
+.btn-link-sm:hover {
+    color: #004080;
+}
