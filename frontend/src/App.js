@@ -4,6 +4,7 @@ import { supabase } from './lib/supabaseCliente';
 import { LoginForm } from './pages/LoginForm';
 import { ResetPassword } from './pages/ResetPassword';
 import { Navbar } from './components/Navbar';
+import { DashboardView } from './pages/DashboardView';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -46,10 +47,7 @@ function App() {
       {/* Contenido Principal con compensación por la barra fija */}
       <main style={{ paddingTop: '70px', paddingLeft: '24px', paddingRight: '24px' }}>
         {activeTab === 'dashboard' && (
-          <div>
-            <h2>Dashboard</h2>
-            <p>Bienvenido al panel principal, {session.user.email}</p>
-          </div>
+          <DashboardView userEmail={session.user.email} />
         )}
 
         {activeTab === 'registrar' && (
