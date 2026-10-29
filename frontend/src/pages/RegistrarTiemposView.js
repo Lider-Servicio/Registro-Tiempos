@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseCliente';
+import { apiService } from '../services/api';
 import '../assets/css/RegistrarTiempos.css';
 
-export const RegistrarTiemposView = ({ userId }) => {
-  // --- ESTADOS PARA OPCIONES (Consultadas desde la BD) ---
+export const RegistrarTiemposView = ({ userId, token }) => {
+  // --- ESTADOS DE OPCIONES ---
   const [listaClientes, setListaClientes] = useState([]);
   const [listaTiposGestion, setListaTiposGestion] = useState([]);
   const [listaTiposActividad, setListaTiposActividad] = useState([]);
@@ -31,161 +31,92 @@ export const RegistrarTiemposView = ({ userId }) => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // 1. Cargar Clientes desde la tabla maestras 'cliente'
+  // 1. Cargar Clientes
   useEffect(() => {
     const fetchClientes = async () => {
-      const { data, error } = await supabase
-        .from('cliente')
-        .select('id, nombre_cliente')
-        .order('nombre_cliente', { ascending: true });
-
-      if (error) {
-        console.error('Error al cargar clientes:', error.message);
-      } else if (data) {
+      try {
+        const data = await apiService.getClientes();
         setListaClientes(data);
+      } catch (err) {
+        console.error(err.message);
       }
     };
     fetchClientes();
   }, []);
 
-  // 2. Cargar Tipos de Gestión según Cliente seleccionado (tabla: cliente_gestion)
+  // 2. Cargar Tipos de Gestión según Cliente ID
   useEffect(() => {
     if (!cliente) {
       setListaTiposGestion([]);
       return;
     }
     const fetchTiposGestion = async () => {
-      // Paso A: Obtener IDs de la tabla intermedia
-      const { data: relData, error: relError } = await supabase
-        .from('cliente_gestion')
-        .select('tipo_gestion')
-        .eq('cliente', cliente);
-
-      if (relError || !relData || relData.length === 0) {
+      try {
+        const data = await apiService.getTiposGestion(cliente);
+        setListaTiposGestion(data);
+      } catch (err) {
+        console.error(err.message);
         setListaTiposGestion([]);
-        return;
-      }
-
-      const idsGestion = relData.map((r) => r.tipo_gestion);
-
-      // Paso B: Consultar nombres en la tabla maestra tipoGestion
-      const { data: gestiones, error: gestError } = await supabase
-        .from('tipoGestion')
-        .select('id, nombre_gestion')
-        .in('id', idsGestion);
-
-      if (!gestError && gestiones) {
-        setListaTiposGestion(gestiones);
       }
     };
-
     fetchTiposGestion();
   }, [cliente]);
 
-  // 3. Cargar Tipos de Actividad según Tipo de Gestión (tabla: tipoGestion_tipoActividad)
+  // 3. Cargar Tipos de Actividad según Tipo de Gestión ID
   useEffect(() => {
     if (!tipoGestion) {
       setListaTiposActividad([]);
       return;
     }
     const fetchTiposActividad = async () => {
-      // Paso A: Obtener IDs de la tabla intermedia
-      const { data: relData, error: relError } = await supabase
-        .from('tipoGestion_tipoActividad')
-        .select('tipo_actividad')
-        .eq('tipo_gestion', tipoGestion);
-
-      if (relError || !relData || relData.length === 0) {
+      try {
+        const data = await apiService.getTiposActividad(tipoGestion);
+        setListaTiposActividad(data);
+      } catch (err) {
+        console.error(err.message);
         setListaTiposActividad([]);
-        return;
-      }
-
-      const idsActividad = relData.map((r) => r.tipo_actividad);
-
-      // Paso B: Consultar nombres en la tabla maestra tipoActividad
-      const { data: actividades, error: actError } = await supabase
-        .from('tipoActividad')
-        .select('id, tipo_actividad')
-        .in('id', idsActividad);
-
-      if (!actError && actividades) {
-        setListaTiposActividad(actividades);
       }
     };
-
     fetchTiposActividad();
   }, [tipoGestion]);
 
-  // 4. Cargar Estados según Tipo de Actividad (tabla: tipoActividad_estado)
+  // 4. Cargar Estados según Tipo de Actividad ID
   useEffect(() => {
     if (!tipoActividad) {
       setListaEstados([]);
       return;
     }
     const fetchEstados = async () => {
-      // Paso A: Obtener IDs de la tabla intermedia
-      const { data: relData, error: relError } = await supabase
-        .from('tipoActividad_estado')
-        .select('estado')
-        .eq('tipo_actividad', tipoActividad);
-
-      if (relError || !relData || relData.length === 0) {
+      try {
+        const data = await apiService.getEstados(tipoActividad);
+        setListaEstados(data);
+      } catch (err) {
+        console.error(err.message);
         setListaEstados([]);
-        return;
-      }
-
-      const idsEstado = relData.map((r) => r.estado);
-
-      // Paso B: Consultar nombres en la tabla maestra estado
-      const { data: estados, error: estError } = await supabase
-        .from('estado')
-        .select('id, estado')
-        .in('id', idsEstado);
-
-      if (!estError && estados) {
-        setListaEstados(estados);
       }
     };
-
     fetchEstados();
   }, [tipoActividad]);
 
-  // 5. Cargar Motivos según Tipo Actividad y Estado (tabla: Estado_Motivo)
+  // 5. Cargar Motivos según Tipo Actividad y Estado ID
   useEffect(() => {
     if (!tipoActividad || !estado) {
       setListaMotivos([]);
       return;
     }
     const fetchMotivos = async () => {
-      // Paso A: Obtener IDs de la tabla intermedia
-      const { data: relData, error: relError } = await supabase
-        .from('Estado_Motivo')
-        .select('motivo')
-        .eq('tipo_actividad', tipoActividad)
-        .eq('estado', estado);
-
-      if (relError || !relData || relData.length === 0) {
+      try {
+        const data = await apiService.getMotivos(tipoActividad, estado);
+        setListaMotivos(data);
+      } catch (err) {
+        console.error(err.message);
         setListaMotivos([]);
-        return;
-      }
-
-      const idsMotivo = relData.map((r) => r.motivo);
-
-      // Paso B: Consultar nombres en la tabla maestra motivo
-      const { data: motivos, error: motError } = await supabase
-        .from('motivo')
-        .select('id, motivo')
-        .in('id', idsMotivo);
-
-      if (!motError && motivos) {
-        setListaMotivos(motivos);
       }
     };
-
     fetchMotivos();
   }, [tipoActividad, estado]);
 
-  // --- MANEJADORES DE CAMBIO CON RESETEO DE DEPENDENCIAS ---
+  // Handlers de cambio con reseteo
   const handleClienteChange = (e) => {
     setCliente(e.target.value);
     setTipoGestion('');
@@ -223,9 +154,7 @@ export const RegistrarTiemposView = ({ userId }) => {
   const handleNroTkChange = (e) => {
     const val = e.target.value;
     setNroTk(val);
-    if (!val.trim()) {
-      resetCamposTicket();
-    }
+    if (!val.trim()) resetCamposTicket();
   };
 
   const resetCamposTicket = () => {
@@ -261,7 +190,6 @@ export const RegistrarTiemposView = ({ userId }) => {
 
     setLoading(true);
 
-    // Mapear los IDs seleccionados a sus descripciones en texto plano para registros_gestion
     const clienteObj = listaClientes.find((c) => c.id === cliente);
     const gestionObj = listaTiposGestion.find((g) => g.id === tipoGestion);
     const actividadObj = listaTiposActividad.find((a) => a.id === tipoActividad);
@@ -269,55 +197,50 @@ export const RegistrarTiemposView = ({ userId }) => {
     const motivoObj = listaMotivos.find((m) => m.id === motivo);
 
     const payload = {
-      user_id: userId,
+      userId,
       cliente: clienteObj ? clienteObj.nombre_cliente : cliente,
-      tipo_gestion: gestionObj ? gestionObj.nombre_gestion : tipoGestion,
-      tipo_actividad: actividadObj ? actividadObj.tipo_actividad : tipoActividad,
-      nro_tk: nroTk || null,
-      tipo_caso: tipoCaso || null,
+      tipoGestion: gestionObj ? gestionObj.nombre_gestion : tipoGestion,
+      tipoActividad: actividadObj ? actividadObj.tipo_actividad : tipoActividad,
+      nroTk: nroTk || null,
+      tipoCaso: tipoCaso || null,
       modulo: modulo || null,
-      causa_raiz: causaRaiz || null,
+      causaRaiz: causaRaiz || null,
       descripcion,
       estado: estadoObj ? estadoObj.estado : estado || null,
       motivo: motivoObj ? motivoObj.motivo : motivo || null,
       detalle: detalle || null,
-      nuevo_responsable: nuevoResponsable || null,
-      tiempo_invertido: parseFloat(tiempoInvertido),
+      nuevoResponsable: nuevoResponsable || null,
+      tiempoInvertido: parseFloat(tiempoInvertido),
       observaciones: observaciones || null,
     };
 
-    const { error: insertError } = await supabase
-      .from('registros_gestion')
-      .insert([payload]);
-
-    if (insertError) {
-      setError(`Error al registrar gestión: ${insertError.message}`);
-    } else {
-      setSuccess('¡Gestión registrada con éxito!');
+    try {
+      await apiService.registrarGestion(payload, token);
+      setSuccess('¡Gestión registrada con éxito en el backend!');
       resetForm();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
     <div className="registro-container">
       <h2>Registro de Gestiones</h2>
       <p style={{ color: '#6b7280', fontSize: '0.9rem' }}>
-        Complete los campos seleccionando las opciones registradas en la base de datos.
+        Complete el formulario conectando a la API de Node.js.
       </p>
 
       <form onSubmit={handleSubmit} className="registro-form">
-        {/* Fila 1: Cliente, Tipo Gestión, Tipo Actividad */}
+        {/* Fila 1 */}
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">CLIENTE *</label>
             <select value={cliente} onChange={handleClienteChange} required>
               <option value="">Seleccione cliente...</option>
               {listaClientes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nombre_cliente}
-                </option>
+                <option key={c.id} value={c.id}>{c.nombre_cliente}</option>
               ))}
             </select>
           </div>
@@ -327,14 +250,12 @@ export const RegistrarTiemposView = ({ userId }) => {
             <select 
               value={tipoGestion} 
               onChange={handleTipoGestionChange} 
-              disabled={!cliente || listaTiposGestion.length === 0} 
+              disabled={!cliente} 
               required
             >
               <option value="">Seleccione gestión...</option>
               {listaTiposGestion.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.nombre_gestion}
-                </option>
+                <option key={g.id} value={g.id}>{g.nombre_gestion}</option>
               ))}
             </select>
           </div>
@@ -344,20 +265,18 @@ export const RegistrarTiemposView = ({ userId }) => {
             <select 
               value={tipoActividad} 
               onChange={handleTipoActividadChange} 
-              disabled={!tipoGestion || listaTiposActividad.length === 0} 
+              disabled={!tipoGestion} 
               required
             >
               <option value="">Seleccione actividad...</option>
               {listaTiposActividad.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.tipo_actividad}
-                </option>
+                <option key={a.id} value={a.id}>{a.tipo_actividad}</option>
               ))}
             </select>
           </div>
         </div>
 
-        {/* Fila 2: NRO TK, Tipo Caso, Módulo SAP */}
+        {/* Fila 2 */}
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">NRO TK</label>
@@ -376,7 +295,7 @@ export const RegistrarTiemposView = ({ userId }) => {
             <input
               type="text"
               className="form-input"
-              placeholder="Ej. Incidente, Consulta"
+              placeholder="Ej. Incidente"
               value={tipoCaso}
               onChange={(e) => setTipoCaso(e.target.value)}
               disabled={!nroTk}
@@ -388,7 +307,7 @@ export const RegistrarTiemposView = ({ userId }) => {
             <input
               type="text"
               className="form-input"
-              placeholder="Ej. MM, FI, SD"
+              placeholder="Ej. MM, FI"
               value={modulo}
               onChange={(e) => setModulo(e.target.value)}
               disabled={!nroTk}
@@ -396,7 +315,7 @@ export const RegistrarTiemposView = ({ userId }) => {
           </div>
         </div>
 
-        {/* Fila 3: Causa Raíz y Tiempo Invertido */}
+        {/* Fila 3 */}
         <div className="form-row">
           <div className="form-group" style={{ flex: 2 }}>
             <label className="form-label">CAUSA RAÍZ</label>
@@ -428,27 +347,25 @@ export const RegistrarTiemposView = ({ userId }) => {
         <div className="form-group">
           <label className="form-label">DESCRIPCIÓN *</label>
           <textarea
-            placeholder="Resumen del TK o actividad asociada..."
+            placeholder="Resumen del TK o actividad..."
             value={descripcion}
             onChange={(e) => setDescripcion(e.target.value)}
             required
           />
         </div>
 
-        {/* Fila 4: Estado, Motivo, Nuevo Responsable */}
+        {/* Fila 4 */}
         <div className="form-row">
           <div className="form-group">
             <label className="form-label">ESTADO</label>
             <select 
               value={estado} 
               onChange={handleEstadoChange} 
-              disabled={!tipoActividad || listaEstados.length === 0}
+              disabled={!tipoActividad}
             >
               <option value="">Seleccione estado...</option>
               {listaEstados.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.estado}
-                </option>
+                <option key={e.id} value={e.id}>{e.estado}</option>
               ))}
             </select>
           </div>
@@ -458,13 +375,11 @@ export const RegistrarTiemposView = ({ userId }) => {
             <select 
               value={motivo} 
               onChange={(e) => setMotivo(e.target.value)} 
-              disabled={!estado || listaMotivos.length === 0}
+              disabled={!estado}
             >
               <option value="">Seleccione motivo...</option>
               {listaMotivos.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.motivo}
-                </option>
+                <option key={m.id} value={m.id}>{m.motivo}</option>
               ))}
             </select>
           </div>
@@ -482,7 +397,7 @@ export const RegistrarTiemposView = ({ userId }) => {
           </div>
         </div>
 
-        {/* Detalle (si aplica) */}
+        {/* Detalle */}
         {estado && (
           <div className="form-group">
             <label className="form-label">DETALLE</label>
