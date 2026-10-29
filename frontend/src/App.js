@@ -5,6 +5,7 @@ import { LoginForm } from './pages/LoginForm';
 import { ResetPassword } from './pages/ResetPassword';
 import { Navbar } from './components/Navbar';
 import { DashboardView } from './pages/DashboardView';
+import { RegistrarTiemposView } from './pages/RegistrarTiemposView';
 
 function App() {
   const [session, setSession] = useState(null);
@@ -47,10 +48,14 @@ function App() {
       {/* Contenido Principal con compensación por la barra fija */}
       <main style={{ paddingTop: '70px', paddingLeft: '24px', paddingRight: '24px' }}>
         {activeTab === 'dashboard' && (
-          <DashboardView userEmail={session.user.email} />
+          <DashboardView userId={session.user.id} userEmail={session.user.email} />
         )}
 
         {activeTab === 'registrar' && (
+          <RegistrarTiemposView userId={session.user.id} />
+        )}
+
+        {activeTab === 'registro' && (
           <div>
             <h2>Registrar Tiempos</h2>
             <p>Aquí irá el formulario para el registro de tiempos de trabajo.</p>

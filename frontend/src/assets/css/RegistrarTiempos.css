@@ -1,0 +1,156 @@
+/* Contenedor Principal */
+.registro-container {
+  max-width: 850px;
+  margin: 24px auto;
+  padding: 32px;
+  background-color: var(--bg-navbar, #ffffff);
+  border: 1px solid var(--border-navbar, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  color: var(--text-navbar, #111827);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.registro-container h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 6px;
+  color: var(--text-navbar, #111827);
+}
+
+/* Formulario y Filas */
+.registro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Etiquetas y Leyendas */
+.form-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #4b5563;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .form-label {
+  color: #9ca3af;
+}
+
+/* Campos de Entrada, Selects y Textareas */
+.registro-container input[type="text"],
+.registro-container input[type="number"],
+.registro-container select,
+.registro-container textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-navbar, #d1d5db);
+  border-radius: 6px;
+  background-color: var(--bg-navbar, #ffffff);
+  color: var(--text-navbar, #111827);
+  font-size: 0.9rem;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.registro-container textarea {
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+/* Estados Focus y Disabled */
+.registro-container input:focus,
+.registro-container select:focus,
+.registro-container textarea:focus {
+  outline: none;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+}
+
+.registro-container input:disabled,
+.registro-container select:disabled,
+.registro-container textarea:disabled {
+  background-color: var(--hover-navbar, #f3f4f6);
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Alertas de Notificación */
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.alert-error {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.alert-success {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+}
+
+/* Botón de Envío */
+.registro-container .btn-primary {
+  background-color: #0066cc;
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  align-self: flex-end;
+  margin-top: 8px;
+}
+
+.registro-container .btn-primary:hover:not(:disabled) {
+  background-color: #0052a3;
+}
+
+.registro-container .btn-primary:disabled {
+  background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
+/* Responsividad para pantallas pequeñas */
+@media (max-width: 640px) {
+  .registro-container {
+    padding: 20px;
+    margin: 12px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .registro-container .btn-primary {
+    width: 100%;
+  }
+}
