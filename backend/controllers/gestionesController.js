@@ -36,6 +36,25 @@ exports.buscarTicket = async (req, res) => {
   }
 };
 
+// GET /api/gestiones/clientes
+exports.getClientes = async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('cliente')
+      .select('id, nombre_cliente');
+
+    if (error) {
+      console.error('❌ Error al obtener clientes:', error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error('❌ Error interno en getClientes:', err);
+    res.status(500).json({ message: 'Error interno del servidor', error: err.message });
+  }
+};
+
 // GET /api/gestiones/motivos?tipoActividadId=TA00001&estadoId=E0003
 exports.getMotivos = async (req, res) => {
   const { tipoActividadId, estadoId } = req.query;
