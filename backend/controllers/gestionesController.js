@@ -1,19 +1,28 @@
-const supabase = require('../config/supabaseClient'); // Ajusta la ruta a tu cliente Supabase
+const { createClient } = require('@supabase/supabase-js');
 
-// GET /api/gestiones/buscar-ticket?nroTk=TK-1234
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// GET /api/gestiones/buscar-ticket?nroTk=55555&clienteId=C0001
 exports.buscarTicket = async (req, res) => {
-  const { nroTk } = req.query;
+  const { nroTk, clienteId } = req.query;
 
-  if (!nroTk || !nroTk.trim()) {
-    return res.json([]);
+  if (!nroTk) {
+    return res.status(400).json({ message: 'El parámetro nroTk es obligatorio' });
   }
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('registros_gestion')
-      .select('canal_ingreso, modulo, causa_raiz, descripcion')
-      .eq('nro_tk', nroTk.trim())
-      .limit(1);
+      .select('canal_ingreso, tipo_caso, modulo, causa_raiz, descripcion')
+      .eq('nro_tk', String(nroTk));
+
+    if (clienteId) {
+      query = query.eq('cliente', String(clienteId));
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
 
     if (error) {
       console.error('❌ Error al buscar ticket:', error);
@@ -22,18 +31,67 @@ exports.buscarTicket = async (req, res) => {
 
     res.json(data || []);
   } catch (err) {
-    console.error('❌ Error grave en buscarTicket:', err);
-    res.status(500).json({ error: err.message });
+    console.error('❌ Error interno en buscarTicket:', err);
+    res.status(500).json({ message: 'Error interno del servidor', error: err.message });
+  }
+};
+
+// GET /api/gestiones/motivos?tipoActividadId=TA00001&estadoId=E0003
+exports.getMotivos = async (req, res) => {
+  const { tipoActividadId, estadoId } = req.query;
+
+  if (!tipoActividadId) {
+    return res.status(400).json({ message: 'El parámetro tipoActividadId es obligatorio' });
+  }
+
+  try {
+    let query = supabase
+      .from('actividad_estado_motivo')
+      .select('motivo')
+      .eq('actividad', String(tipoActividadId));
+
+    if (estadoId && estadoId !== 'null' && estadoId !== 'undefined' && estadoId !== '') {
+      query = query.eq('estado', String(estadoId));
+    } else {
+      query = query.is('estado', null);
+    }
+
+    const { data: puenteData, error: puenteError } = await query;
+
+    if (puenteError) {
+      console.error('❌ Error al consultar actividad_estado_motivo:', puenteError);
+      return res.status(400).json({ error: puenteError.message });
+    }
+
+    if (!puenteData || puenteData.length === 0) {
+      return res.json([]);
+    }
+
+    const listaMotivosIds = puenteData.map((item) => item.motivo);
+
+    const { data: motivosData, error: motivosError } = await supabase
+      .from('motivo')
+      .select('id, motivo')
+      .in('id', listaMotivosIds);
+
+    if (motivosError) {
+      console.error('❌ Error al consultar la tabla motivo:', motivosError);
+      return res.status(400).json({ error: motivosError.message });
+    }
+
+    res.json(motivosData || []);
+  } catch (err) {
+    console.error('❌ Error interno en getMotivos:', err);
+    res.status(500).json({ message: 'Error interno del servidor', error: err.message });
   }
 };
 
 // POST /api/gestiones/registrar
 exports.registrarGestion = async (req, res) => {
-  console.log('👉 Payload recibido en registrarGestion:', req.body);
-
   const {
     userId,
-    gestionador, // 👈 Recibimos el nombre o email del usuario (ej. 'juan.perez' o req.user.email)
+    gestionador,
+    userEmail,
     clienteId,
     clienteNombre,
     tipoGestionId,
@@ -46,34 +104,43 @@ exports.registrarGestion = async (req, res) => {
     descripcion,
     estadoId,
     motivoId,
+    esMotivoLlamada,
     detalle,
     nuevoResponsable,
     tiempoInvertido,
     observaciones
   } = req.body;
 
-  const clienteFinal = clienteId || clienteNombre;
+  let nombreGestionador = gestionador;
+  if (!nombreGestionador && userEmail) {
+    nombreGestionador = userEmail.split('@')[0];
+  } else if (!nombreGestionador && req.user && req.user.email) {
+    nombreGestionador = req.user.email.split('@')[0];
+  } else if (!nombreGestionador) {
+    nombreGestionador = 'lider.servicio';
+  }
 
-  // Extraer un nombre de gestionador si no viene en req.body
-  const nombreGestionador = gestionador || (req.user && req.user.email ? req.user.email.split('@')[0] : 'Usuario Sistema');
+  const clienteFinal = clienteId || clienteNombre;
 
   try {
     const registroPayload = {
-      gestionador: nombreGestionador,          // 👈 CAMPO OBLIGATORIO: Se envía explícitamente
+      gestionador: nombreGestionador,
       cliente: String(clienteFinal),
       tipo_gestion: String(tipoGestionId),
       tipo_actividad: String(tipoActividadId),
       canal_ingreso: String(canalIngreso),
       descripcion: String(descripcion),
       tiempo_invertido: Number(tiempoInvertido),
-      
-      // Campos opcionales / condicionales
+
       nro_tk: nroTk || null,
       tipo_caso: tipoCaso || null,
       modulo: modulo || null,
       causa_raiz: causaRaiz || null,
+
       estado: estadoId ? String(estadoId) : null,
-      motivo: motivoId ? String(motivoId) : null,
+      motivo: !esMotivoLlamada && motivoId ? String(motivoId) : null,
+      motivo_llamada: esMotivoLlamada && motivoId ? String(motivoId) : null,
+
       detalle: detalle || null,
       nuevo_responsable: nuevoResponsable || null,
       observaciones: observaciones || null
@@ -90,15 +157,9 @@ exports.registrarGestion = async (req, res) => {
 
     if (error) {
       console.error('❌ Error de Supabase al insertar:', error);
-      return res.status(400).json({
-        message: 'Error al insertar en la base de datos',
-        error: error.message,
-        details: error.details,
-        hint: error.hint
-      });
+      return res.status(400).json({ message: error.message, details: error.details });
     }
 
-    console.log('✅ Gestión registrada exitosamente:', data);
     res.json({ message: 'Gestión registrada exitosamente', data });
   } catch (err) {
     console.error('❌ Error grave en registrarGestion:', err);

@@ -1,51 +1,33 @@
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// Importar rutas
-const maestrasRoutes = require('./routes/maestrasRoutes');
-const gestionesRoutes = require('./routes/gestionesRoutes');
-
 const app = express();
-const PORT = process.env.PORT || 5000;
 
-// Configuración de Middlewares
+// Lista de orígenes permitidos
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://tu-app-frontend.vercel.app' // 👈 Sustituye con tu URL real de Vercel
+];
+
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://localhost:3000', // URL del frontend React
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Acceso no permitido por política CORS'));
+    }
+  },
   credentials: true
 }));
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Ruta de comprobación de salud de la API
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'OK', message: 'Servidor Backend activo y respondiendo.' });
-});
-
-// Registrar módulos de rutas
-app.use('/api/maestras', maestrasRoutes);
+// Rutas de gestiones
+const gestionesRoutes = require('./routes/gestionesRoutes');
 app.use('/api/gestiones', gestionesRoutes);
 
-// Manejador de rutas no encontradas (404)
-app.use((req, res) => {
-  res.status(404).json({ message: 'Ruta no encontrada en el servidor' });
-});
-
-// Manejador de errores globales del servidor
-app.use((err, req, res, next) => {
-  console.error('Error no controlado en el servidor:', err.stack);
-  res.status(500).json({ 
-    message: 'Error interno del servidor', 
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-  });
-});
-
-// Iniciar servidor
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`=================================`);
-  console.log(` Servidor Backend FLAG Soluciones `);
-  console.log(` Escuchando en el puerto: ${PORT}  `);
-  console.log(`=================================`);
+  console.log(`🚀 Servidor ejecutándose en el puerto ${PORT}`);
 });

@@ -1,64 +1,68 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export const apiService = {
-  // Cargar tablas maestras relacionales
+  // Clientes
   getClientes: async () => {
-    const res = await fetch(`${API_BASE_URL}/maestras/clientes`);
+    const res = await fetch(`${API_BASE_URL}/gestiones/clientes`);
     if (!res.ok) throw new Error('Error al obtener clientes');
     return res.json();
   },
 
+  // Tipos de Gestión según Cliente
   getTiposGestion: async (clienteId) => {
-    const res = await fetch(`${API_BASE_URL}/maestras/gestiones?clienteId=${encodeURIComponent(clienteId)}`);
+    const res = await fetch(`${API_BASE_URL}/gestiones/tipos-gestion?clienteId=${encodeURIComponent(clienteId)}`);
     if (!res.ok) throw new Error('Error al obtener tipos de gestión');
     return res.json();
   },
 
+  // Tipos de Actividad según Tipo de Gestión
   getTiposActividad: async (tipoGestionId) => {
-    const res = await fetch(`${API_BASE_URL}/maestras/actividades?tipoGestionId=${encodeURIComponent(tipoGestionId)}`);
+    const res = await fetch(`${API_BASE_URL}/gestiones/tipos-actividad?tipoGestionId=${encodeURIComponent(tipoGestionId)}`);
     if (!res.ok) throw new Error('Error al obtener tipos de actividad');
     return res.json();
   },
 
+  // Estados según Tipo de Actividad
   getEstados: async (tipoActividadId) => {
-    const res = await fetch(`${API_BASE_URL}/maestras/estados?tipoActividadId=${encodeURIComponent(tipoActividadId)}`);
+    const res = await fetch(`${API_BASE_URL}/gestiones/estados?tipoActividadId=${encodeURIComponent(tipoActividadId)}`);
     if (!res.ok) throw new Error('Error al obtener estados');
     return res.json();
   },
 
+  // Motivos filtrados por la tabla puente (Actividad + Estado)
   getMotivos: async (tipoActividadId, estadoId) => {
-    const res = await fetch(`${API_BASE_URL}/maestras/motivos?tipoActividadId=${encodeURIComponent(tipoActividadId)}&estadoId=${encodeURIComponent(estadoId)}`);
+    let url = `${API_BASE_URL}/gestiones/motivos?tipoActividadId=${encodeURIComponent(tipoActividadId)}`;
+    if (estadoId) {
+      url += `&estadoId=${encodeURIComponent(estadoId)}`;
+    }
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Error al obtener motivos');
     return res.json();
   },
 
-  // Búsqueda de ticket por número en tiempo real
-  buscarTicket: async (nroTk) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/gestiones/buscar-ticket?nroTk=${encodeURIComponent(nroTk)}`);
-      if (!response.ok) {
-        throw new Error('Error al consultar la existencia del ticket');
-      }
-      return await response.json();
-    } catch (error) {
-      console.error('Error en apiService.buscarTicket:', error);
-      throw error;
-    }
+  // Búsqueda de Ticket por Nro TK y Cliente
+  buscarTicket: async (nroTk, clienteId) => {
+    const res = await fetch(
+      `${API_BASE_URL}/gestiones/buscar-ticket?nroTk=${encodeURIComponent(nroTk)}&clienteId=${encodeURIComponent(clienteId)}`
+    );
+    if (!res.ok) throw new Error('Error al buscar ticket');
+    return res.json();
   },
 
-  // Registrar gestión
+  // Registro de Gestión
   registrarGestion: async (payload, token) => {
     const res = await fetch(`${API_BASE_URL}/gestiones/registrar`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        ...(token && { Authorization: `Bearer ${token}` })
       },
       body: JSON.stringify(payload)
     });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || 'Error al guardar el registro');
-    return data;
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.message || 'Error al registrar gestión');
+    }
+    return res.json();
   }
 };
