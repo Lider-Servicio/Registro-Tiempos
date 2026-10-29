@@ -33,7 +33,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // 3. Importar rutas (usando el archivo exacto gestionesRouter.js)
 const maestrasRoutes = require('./routes/maestrasRoutes');
-const gestionesRoutes = require('./routes/gestionesRouter');
+const gestionesRoutes = require('./routes/gestionesRoutes');
 
 // 4. Ruta de comprobación de salud de la API
 app.get('/api/health', (req, res) => {
