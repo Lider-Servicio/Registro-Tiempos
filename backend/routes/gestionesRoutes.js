@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { registrarGestion } = require('../controllers/gestionesController');
+const gestionesController = require('../controllers/gestionesController');
 
-router.post('/registrar', registrarGestion);
+// GET /api/gestiones/buscar-ticket?nroTk=TK-1234
+router.get('/buscar-ticket', gestionesController.buscarTicket);
+
+// POST /api/gestiones/registrar
+router.post('/registrar', gestionesController.registrarGestion);
 
 module.exports = router;

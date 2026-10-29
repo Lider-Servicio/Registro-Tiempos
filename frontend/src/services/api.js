@@ -32,6 +32,20 @@ export const apiService = {
     return res.json();
   },
 
+  // Búsqueda de ticket por número en tiempo real
+  buscarTicket: async (nroTk) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/gestiones/buscar-ticket?nroTk=${encodeURIComponent(nroTk)}`);
+      if (!response.ok) {
+        throw new Error('Error al consultar la existencia del ticket');
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('Error en apiService.buscarTicket:', error);
+      throw error;
+    }
+  },
+
   // Registrar gestión
   registrarGestion: async (payload, token) => {
     const res = await fetch(`${API_BASE_URL}/gestiones/registrar`, {

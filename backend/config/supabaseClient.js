@@ -4,11 +4,15 @@ require('dotenv').config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+console.log('--- DEBUG SUPABASE CONFIG ---');
+console.log('SUPABASE_URL:', supabaseUrl);
+console.log('KEY DEFINIDA:', !!supabaseServiceKey);
+console.log('-----------------------------');
+
 if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Faltan variables de entorno necesarias: SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY deben estar definidas en backend/.env');
 }
 
-// Inicialización del cliente con Service Role Key para ejecuciones desde el Backend
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     persistSession: false,

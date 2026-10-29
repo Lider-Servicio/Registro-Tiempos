@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
 import '../assets/css/RegistrarTiempos.css';
 
-export const RegistrarTiemposView = ({ userId, token }) => {
-  // --- ESTADOS DE OPCIONES ---
+export const RegistrarTiemposView = ({ userId, userEmail = 'lider.servicio@flagsoluciones.com', token }) => {
+  // --- ESTADOS DE OPCIONES (Listas Maestras) ---
   const [listaClientes, setListaClientes] = useState([]);
   const [listaTiposGestion, setListaTiposGestion] = useState([]);
   const [listaTiposActividad, setListaTiposActividad] = useState([]);
@@ -14,6 +14,7 @@ export const RegistrarTiemposView = ({ userId, token }) => {
   const [cliente, setCliente] = useState('');
   const [tipoGestion, setTipoGestion] = useState('');
   const [tipoActividad, setTipoActividad] = useState('');
+  const [canalIngreso, setCanalIngreso] = useState('');
   const [nroTk, setNroTk] = useState('');
   const [tipoCaso, setTipoCaso] = useState('');
   const [modulo, setModulo] = useState('');
@@ -26,25 +27,46 @@ export const RegistrarTiemposView = ({ userId, token }) => {
   const [tiempoInvertido, setTiempoInvertido] = useState('');
   const [observaciones, setObservaciones] = useState('');
 
+  // --- ESTADOS DE LÓGICA DINÁMICA DE TICKET ---
+  const [ticketExisteBD, setTicketExisteBD] = useState(false);
+  const [buscandoTicket, setBuscandoTicket] = useState(false);
+
   // --- ESTADOS DE INTERFAZ ---
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  // 1. Cargar Clientes
+  // Evaluador flexible para gestión de tipo TK o Ticket
+  const gestionSeleccionadaObj = listaTiposGestion.find((g) => String(g.id) === String(tipoGestion));
+  const nombreGestionLower = gestionSeleccionadaObj ? gestionSeleccionadaObj.nombre_gestion.toLowerCase() : '';
+  const esGestionTk = nombreGestionLower.includes('tk') || nombreGestionLower.includes('ticket');
+
+  // Evaluador de Actividades de llamada o transferencia
+  const actividadSeleccionadaObj = listaTiposActividad.find((a) => String(a.id) === String(tipoActividad));
+  const nombreActividadLower = actividadSeleccionadaObj ? actividadSeleccionadaObj.tipo_actividad.toLowerCase() : '';
+  const esMotivoLlamada = nombreActividadLower.includes('transferida') || nombreActividadLower.includes('llamada');
+
+  // Evaluador para mostrar motivo, detalle y nuevo responsable ("Escalado", "Pendiente" o Actividades de Llamada)
+  const estadoSeleccionadoObj = listaEstados.find((e) => String(e.id) === String(estado));
+  const nombreEstadoLower = estadoSeleccionadoObj ? estadoSeleccionadoObj.estado.toLowerCase() : '';
+  const requiereCamposEspeciales =
+    nombreEstadoLower.includes('escalado') || nombreEstadoLower.includes('pendiente') || esMotivoLlamada;
+
+  // 1. Cargar Clientes al montar
   useEffect(() => {
     const fetchClientes = async () => {
       try {
         const data = await apiService.getClientes();
-        setListaClientes(data);
+        setListaClientes(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err.message);
+        console.error('Error al cargar clientes:', err.message);
+        setListaClientes([]);
       }
     };
     fetchClientes();
   }, []);
 
-  // 2. Cargar Tipos de Gestión según Cliente ID
+  // 2. Cargar Tipos de Gestión según Cliente
   useEffect(() => {
     if (!cliente) {
       setListaTiposGestion([]);
@@ -53,16 +75,16 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     const fetchTiposGestion = async () => {
       try {
         const data = await apiService.getTiposGestion(cliente);
-        setListaTiposGestion(data);
+        setListaTiposGestion(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err.message);
+        console.error('Error al cargar tipos de gestión:', err.message);
         setListaTiposGestion([]);
       }
     };
     fetchTiposGestion();
   }, [cliente]);
 
-  // 3. Cargar Tipos de Actividad según Tipo de Gestión ID
+  // 3. Cargar Tipos de Actividad según Tipo de Gestión
   useEffect(() => {
     if (!tipoGestion) {
       setListaTiposActividad([]);
@@ -71,16 +93,16 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     const fetchTiposActividad = async () => {
       try {
         const data = await apiService.getTiposActividad(tipoGestion);
-        setListaTiposActividad(data);
+        setListaTiposActividad(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err.message);
+        console.error('Error al cargar tipos de actividad:', err.message);
         setListaTiposActividad([]);
       }
     };
     fetchTiposActividad();
   }, [tipoGestion]);
 
-  // 4. Cargar Estados según Tipo de Actividad ID
+  // 4. Cargar Estados según Tipo de Actividad
   useEffect(() => {
     if (!tipoActividad) {
       setListaEstados([]);
@@ -89,34 +111,87 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     const fetchEstados = async () => {
       try {
         const data = await apiService.getEstados(tipoActividad);
-        setListaEstados(data);
+        setListaEstados(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err.message);
+        console.error('Error al cargar estados:', err.message);
         setListaEstados([]);
       }
     };
     fetchEstados();
   }, [tipoActividad]);
 
-  // 5. Cargar Motivos según Tipo Actividad y Estado ID
+  // 5. Cargar Motivos desde la tabla puente 'actividad_estado_motivo'
   useEffect(() => {
-    if (!tipoActividad || !estado) {
+    if (!tipoActividad) {
       setListaMotivos([]);
       return;
     }
     const fetchMotivos = async () => {
       try {
-        const data = await apiService.getMotivos(tipoActividad, estado);
-        setListaMotivos(data);
+        const data = await apiService.getMotivos(tipoActividad, estado || null);
+        setListaMotivos(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error(err.message);
+        console.error('Error al cargar motivos:', err.message);
         setListaMotivos([]);
       }
     };
     fetchMotivos();
   }, [tipoActividad, estado]);
 
-  // Handlers de cambio con reseteo
+  // Consulta de ticket en tiempo real
+  const verificarTicketEnBD = useCallback(async (numeroTicket) => {
+    if (!numeroTicket || !numeroTicket.trim()) {
+      setTicketExisteBD(false);
+      resetCamposAutocompletados();
+      return;
+    }
+
+    setBuscandoTicket(true);
+    try {
+      const data = await apiService.buscarTicket(numeroTicket.trim());
+      if (data && data.length > 0) {
+        const reg = data[0];
+        setTicketExisteBD(true);
+        setCanalIngreso(reg.canal_ingreso || 'Portal / Ticket');
+        setTipoCaso(reg.tipo_caso || ''); // 👈 Precarga de Tipo Caso desde BD
+        setModulo(reg.modulo || '');
+        setCausaRaiz(reg.causa_raiz || '');
+        setDescripcion(reg.descripcion || '');
+      } else {
+        setTicketExisteBD(false);
+        resetCamposAutocompletados();
+      }
+    } catch (err) {
+      console.error('Error al verificar ticket:', err);
+      setTicketExisteBD(false);
+    } finally {
+      setBuscandoTicket(false);
+    }
+  }, []);
+
+  // Debounce para el input de Nro Tk
+  useEffect(() => {
+    if (!esGestionTk || !nroTk) {
+      setTicketExisteBD(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      verificarTicketEnBD(nroTk);
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [nroTk, esGestionTk, verificarTicketEnBD]);
+
+  const resetCamposAutocompletados = () => {
+    setCanalIngreso('');
+    setTipoCaso('');
+    setModulo('');
+    setCausaRaiz('');
+    setDescripcion('');
+  };
+
+  // Handlers
   const handleClienteChange = (e) => {
     setCliente(e.target.value);
     setTipoGestion('');
@@ -124,7 +199,8 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     setEstado('');
     setMotivo('');
     setNroTk('');
-    resetCamposTicket();
+    setTicketExisteBD(false);
+    resetCamposAutocompletados();
   };
 
   const handleTipoGestionChange = (e) => {
@@ -133,7 +209,8 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     setEstado('');
     setMotivo('');
     setNroTk('');
-    resetCamposTicket();
+    setTicketExisteBD(false);
+    resetCamposAutocompletados();
   };
 
   const handleTipoActividadChange = (e) => {
@@ -141,7 +218,8 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     setEstado('');
     setMotivo('');
     setNroTk('');
-    resetCamposTicket();
+    setTicketExisteBD(false);
+    resetCamposAutocompletados();
   };
 
   const handleEstadoChange = (e) => {
@@ -151,24 +229,15 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     setNuevoResponsable('');
   };
 
-  const handleNroTkChange = (e) => {
-    const val = e.target.value;
-    setNroTk(val);
-    if (!val.trim()) resetCamposTicket();
-  };
-
-  const resetCamposTicket = () => {
-    setTipoCaso('');
-    setModulo('');
-    setCausaRaiz('');
-  };
-
   const resetForm = () => {
     setCliente('');
     setTipoGestion('');
     setTipoActividad('');
+    setCanalIngreso('');
     setNroTk('');
-    resetCamposTicket();
+    setTipoCaso('');
+    setModulo('');
+    setCausaRaiz('');
     setDescripcion('');
     setEstado('');
     setMotivo('');
@@ -176,6 +245,7 @@ export const RegistrarTiemposView = ({ userId, token }) => {
     setNuevoResponsable('');
     setTiempoInvertido('');
     setObservaciones('');
+    setTicketExisteBD(false);
   };
 
   const handleSubmit = async (e) => {
@@ -190,24 +260,34 @@ export const RegistrarTiemposView = ({ userId, token }) => {
 
     setLoading(true);
 
-    const clienteObj = listaClientes.find((c) => c.id === cliente);
-    const gestionObj = listaTiposGestion.find((g) => g.id === tipoGestion);
-    const actividadObj = listaTiposActividad.find((a) => a.id === tipoActividad);
-    const estadoObj = listaEstados.find((e) => e.id === estado);
-    const motivoObj = listaMotivos.find((m) => m.id === motivo);
+    const gestionadorNombre = userEmail ? userEmail.split('@')[0] : 'lider.servicio';
+
+    const clienteObj = listaClientes.find((c) => String(c.id) === String(cliente));
+    const gestionObj = listaTiposGestion.find((g) => String(g.id) === String(tipoGestion));
+    const actividadObj = listaTiposActividad.find((a) => String(a.id) === String(tipoActividad));
+    const estadoObj = listaEstados.find((e) => String(e.id) === String(estado));
+    const motivoObj = listaMotivos.find((m) => String(m.id) === String(motivo));
 
     const payload = {
       userId,
-      cliente: clienteObj ? clienteObj.nombre_cliente : cliente,
-      tipoGestion: gestionObj ? gestionObj.nombre_gestion : tipoGestion,
-      tipoActividad: actividadObj ? actividadObj.tipo_actividad : tipoActividad,
-      nroTk: nroTk || null,
+      gestionador: gestionadorNombre,
+      clienteId: cliente || null,
+      clienteNombre: clienteObj ? clienteObj.nombre_cliente : cliente,
+      tipoGestionId: tipoGestion || null,
+      tipoGestionNombre: gestionObj ? gestionObj.nombre_gestion : tipoGestion,
+      tipoActividadId: tipoActividad || null,
+      tipoActividadNombre: actividadObj ? actividadObj.tipo_actividad : tipoActividad,
+      canalIngreso: canalIngreso || 'Portal / Ticket',
+      nroTk: esGestionTk ? nroTk || null : null,
       tipoCaso: tipoCaso || null,
       modulo: modulo || null,
       causaRaiz: causaRaiz || null,
-      descripcion,
-      estado: estadoObj ? estadoObj.estado : estado || null,
-      motivo: motivoObj ? motivoObj.motivo : motivo || null,
+      descripcion: descripcion || 'Gestión sobre ticket existente',
+      estadoId: estado || null,
+      estadoNombre: estadoObj ? estadoObj.estado : estado || null,
+      motivoId: motivo || null,
+      motivoNombre: motivoObj ? motivoObj.motivo : motivo || null,
+      esMotivoLlamada,
       detalle: detalle || null,
       nuevoResponsable: nuevoResponsable || null,
       tiempoInvertido: parseFloat(tiempoInvertido),
@@ -219,7 +299,7 @@ export const RegistrarTiemposView = ({ userId, token }) => {
       setSuccess('¡Gestión registrada con éxito en el backend!');
       resetForm();
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Error al guardar la gestión.');
     } finally {
       setLoading(false);
     }
@@ -247,25 +327,27 @@ export const RegistrarTiemposView = ({ userId, token }) => {
 
           <div className="form-group">
             <label className="form-label">TIPO GESTIÓN *</label>
-            <select 
-              value={tipoGestion} 
-              onChange={handleTipoGestionChange} 
-              disabled={!cliente} 
+            <select
+              value={tipoGestion}
+              onChange={handleTipoGestionChange}
+              disabled={!cliente}
               required
             >
-              <option value="">Seleccione gestión...</option>
+              <option value="">Seleccione tipo gestión...</option>
               {listaTiposGestion.map((g) => (
-                <option key={g.id} value={g.id}>{g.nombre_gestion}</option>
+                <option key={g.id} value={g.id}>
+                  {g.nombre_gestion}
+                </option>
               ))}
             </select>
           </div>
 
           <div className="form-group">
             <label className="form-label">TIPO ACTIVIDAD *</label>
-            <select 
-              value={tipoActividad} 
-              onChange={handleTipoActividadChange} 
-              disabled={!tipoGestion} 
+            <select
+              value={tipoActividad}
+              onChange={handleTipoActividadChange}
+              disabled={!tipoGestion}
               required
             >
               <option value="">Seleccione actividad...</option>
@@ -276,59 +358,109 @@ export const RegistrarTiemposView = ({ userId, token }) => {
           </div>
         </div>
 
-        {/* Fila 2 */}
+        {/* Fila NRO TK */}
+        {esGestionTk && (
+          <div className="form-row">
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">NRO TK *</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej. TK-8492"
+                value={nroTk}
+                onChange={(e) => setNroTk(e.target.value)}
+                required
+              />
+              {buscandoTicket && (
+                <span className="ticket-status-loading">
+                  🔍 Buscando ticket en BD...
+                </span>
+              )}
+              {ticketExisteBD && (
+                <span className="ticket-status-success">
+                  ✓ Ticket registrado. Datos básicos (Canal, Tipo Caso, Módulo, Causa Raíz y Descripción) precargados de la BD.
+                </span>
+              )}
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label className="form-label">TIPO CASO</label>
+              <select
+                className="form-input"
+                value={tipoCaso}
+                onChange={(e) => setTipoCaso(e.target.value)}
+              >
+                <option value="">Seleccione tipo de caso...</option>
+                <option value="Solicitud">Solicitud</option>
+                <option value="Incidente">Incidente</option>
+                <option value="Tarea">Tarea</option>
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* BLOQUE CAMPOS BÁSICOS PRECARGADOS */}
+        {!ticketExisteBD && (
+          <div className="bloque-datos-basicos">
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">CANAL DE INGRESO *</label>
+                <select
+                  className="form-input"
+                  value={canalIngreso}
+                  onChange={(e) => setCanalIngreso(e.target.value)}
+                  required={!ticketExisteBD}
+                >
+                  <option value="">Seleccione canal...</option>
+                  <option value="Correo">Correo</option>
+                  <option value="Portal / Ticket">Portal / Ticket</option>
+                  <option value="Llamada / Teams">Llamada / Teams</option>
+                  <option value="Chat">Chat</option>
+                  <option value="Verbal / Presencial">Verbal / Presencial</option>
+                </select>
+              </div>
+
+              {esGestionTk && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">MÓDULO SAP</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Ej. MM, FI"
+                      value={modulo}
+                      onChange={(e) => setModulo(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">CAUSA RAÍZ</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="Causa o problema original"
+                      value={causaRaiz}
+                      onChange={(e) => setCausaRaiz(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">DESCRIPCIÓN *</label>
+              <textarea
+                placeholder="Resumen del TK o actividad..."
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                required={!ticketExisteBD}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Fila Tiempo y Estado */}
         <div className="form-row">
-          <div className="form-group">
-            <label className="form-label">NRO TK</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Ej. TK-8492"
-              value={nroTk}
-              onChange={handleNroTkChange}
-              disabled={!tipoActividad}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">TIPO CASO</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Ej. Incidente"
-              value={tipoCaso}
-              onChange={(e) => setTipoCaso(e.target.value)}
-              disabled={!nroTk}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">MÓDULO SAP</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Ej. MM, FI"
-              value={modulo}
-              onChange={(e) => setModulo(e.target.value)}
-              disabled={!nroTk}
-            />
-          </div>
-        </div>
-
-        {/* Fila 3 */}
-        <div className="form-row">
-          <div className="form-group" style={{ flex: 2 }}>
-            <label className="form-label">CAUSA RAÍZ</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Causa o problema original"
-              value={causaRaiz}
-              onChange={(e) => setCausaRaiz(e.target.value)}
-              disabled={!nroTk}
-            />
-          </div>
-
           <div className="form-group" style={{ flex: 1 }}>
             <label className="form-label">TIEMPO INVERTIDO (MIN) *</label>
             <input
@@ -341,26 +473,12 @@ export const RegistrarTiemposView = ({ userId, token }) => {
               required
             />
           </div>
-        </div>
 
-        {/* Descripción */}
-        <div className="form-group">
-          <label className="form-label">DESCRIPCIÓN *</label>
-          <textarea
-            placeholder="Resumen del TK o actividad..."
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            required
-          />
-        </div>
-
-        {/* Fila 4 */}
-        <div className="form-row">
-          <div className="form-group">
+          <div className="form-group" style={{ flex: 1 }}>
             <label className="form-label">ESTADO</label>
-            <select 
-              value={estado} 
-              onChange={handleEstadoChange} 
+            <select
+              value={estado}
+              onChange={handleEstadoChange}
               disabled={!tipoActividad}
             >
               <option value="">Seleccione estado...</option>
@@ -369,44 +487,47 @@ export const RegistrarTiemposView = ({ userId, token }) => {
               ))}
             </select>
           </div>
-
-          <div className="form-group">
-            <label className="form-label">MOTIVO</label>
-            <select 
-              value={motivo} 
-              onChange={(e) => setMotivo(e.target.value)} 
-              disabled={!estado}
-            >
-              <option value="">Seleccione motivo...</option>
-              {listaMotivos.map((m) => (
-                <option key={m.id} value={m.id}>{m.motivo}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">NUEVO RESPONSABLE</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Persona asignada"
-              value={nuevoResponsable}
-              onChange={(e) => setNuevoResponsable(e.target.value)}
-              disabled={!estado}
-            />
-          </div>
         </div>
 
-        {/* Detalle */}
-        {estado && (
-          <div className="form-group">
-            <label className="form-label">DETALLE</label>
-            <textarea
-              placeholder="Desglose de por qué se escaló o quedó pendiente..."
-              value={detalle}
-              onChange={(e) => setDetalle(e.target.value)}
-            />
-          </div>
+        {/* Campos Condicionales de Estado o Llamadas */}
+        {requiereCamposEspeciales && (
+          <>
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label">MOTIVO *</label>
+                <select
+                  value={motivo}
+                  onChange={(e) => setMotivo(e.target.value)}
+                  required
+                >
+                  <option value="">Seleccione motivo...</option>
+                  {listaMotivos.map((m) => (
+                    <option key={m.id} value={m.id}>{m.motivo}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">NUEVO RESPONSABLE</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Persona asignada"
+                  value={nuevoResponsable}
+                  onChange={(e) => setNuevoResponsable(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">DETALLE</label>
+              <textarea
+                placeholder="Desglose de por qué se escaló o quedó pendiente..."
+                value={detalle}
+                onChange={(e) => setDetalle(e.target.value)}
+              />
+            </div>
+          </>
         )}
 
         {/* Observaciones */}

@@ -154,3 +154,39 @@
     width: 100%;
   }
 }
+
+/* Estilos para el bloque de datos básicos ocultables */
+.bloque-datos-basicos {
+  transition: all 0.3s ease-in-out;
+  padding: 12px;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  margin-bottom: 1rem;
+}
+
+/* Indicador visual de éxito al encontrar el ticket */
+.ticket-status-success {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #059669;
+  font-weight: 500;
+  background-color: #ecfdf5;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+/* Animación de carga breve para el estado "Buscando..." */
+.ticket-status-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: #2563eb;
+  font-weight: 500;
+}
