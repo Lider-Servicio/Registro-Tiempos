@@ -18,8 +18,8 @@ export const Navbar = ({ activeTab, setActiveTab, userEmail, onSignOut }) => {
     <nav className="navbar">
       {/* Marca / Logo */}
       <div className="navbar-brand">
-        <img src={logoFlag} alt="FLAG SOLUCIONES" className="navbar-logo" />
-        <span>FLAG SOLUCIONES</span>
+        <img src={logoFlag} alt="Flag Soluciones S.A.S" className="navbar-logo" />
+        <span>Gestión de tiempos</span>
       </div>
 
       {/* Menú de Opciones */}
