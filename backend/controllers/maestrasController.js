@@ -8,10 +8,21 @@ exports.getClientes = async (req, res) => {
       .select('id, nombre_cliente')
       .order('nombre_cliente', { ascending: true });
 
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      console.error('❌ ERROR SUPABASE EN getClientes:', error);
+      return res.status(500).json({
+        message: 'Error en la consulta a la base de datos',
+        error: error.message
+      });
+    }
+
+    res.json(data || []);
   } catch (err) {
-    res.status(500).json({ message: 'Error al obtener clientes', error: err.message });
+    console.error('❌ ERROR SERVIDOR EN getClientes:', err);
+    res.status(500).json({
+      message: 'Error interno del servidor',
+      error: err.message
+    });
   }
 };
 
@@ -27,7 +38,13 @@ exports.getTiposGestion = async (req, res) => {
       .select('tipo_gestion')
       .eq('cliente', clienteId);
 
-    if (relError) throw relError;
+    if (relError) {
+      console.error('❌ ERROR SUPABASE EN getTiposGestion:', relError);
+      return res.status(500).json({
+        message: 'Error en la consulta a la base de datos',
+        error: relError.message
+      });
+    }
     if (!relData || relData.length === 0) return res.json([]);
 
     const idsGestion = relData.map((r) => r.tipo_gestion);
